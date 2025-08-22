@@ -1,6 +1,7 @@
 fastapi==0.116.1
 gTTS==2.5.4
 markdown_pdf==1.7
+mutagen==1.47.0
 pydantic==2.11.7
 python-dotenv==1.1.1
 supabase==2.18.1

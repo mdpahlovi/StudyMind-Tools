@@ -1,17 +1,14 @@
 """StudyMind Tools API.
 
-FastAPI service providing:
-- /markdown-to-pdf: Convert Markdown to PDF and upload to Supabase storage.
-- /text-to-audio: Convert text to MP3 via gTTS and upload to Supabase.
+Tools:
+- /markdown-to-pdf: Generate pdf from markdown and upload to Supabase.
+- /text-to-audio: Generate audio from text and upload to Supabase.
 
-Environment variables:
-- SUPABASE_URL
-- SUPABASE_KEY
-- BUCKET_NAME (optional, default 'studymind')
 """
 
 import os
 import tempfile
+from mutagen.mp3 import MP3
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -35,6 +32,18 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
+def get_file_url(file_path: str) -> str:
+    """Get public URL for uploaded file from Supabase."""
+    response = supabase.storage.from_(BUCKET_NAME).get_public_url(file_path)
+    return response if response else ""
+
+
+def get_duration(file_path: str) -> int:
+    """Get duration of audio file in seconds."""
+    audio = MP3(file_path)
+    return audio.info.length if audio.info.length else 0
+
+
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     """Return favicon.ico"""
@@ -52,7 +61,7 @@ class MarkdownToPdfIn(BaseModel):
     """Request body for the /markdown-to-pdf endpoint."""
 
     contents: str = Field(..., min_length=1, max_length=500000)
-    filename: str = Field(..., min_length=1, max_length=100)
+    fileName: str = Field(..., min_length=1, max_length=100)
 
 
 @app.post("/markdown-to-pdf")
@@ -74,28 +83,31 @@ def markdown_to_pdf(payload: MarkdownToPdfIn):
         with open(temp_path, "rb") as f:
             response = supabase.storage.from_(BUCKET_NAME).upload(
                 file=f,
-                path=payload.filename,
+                path=payload.fileName,
                 file_options={"content-type": "application/pdf", "upsert": "true"},
             )
 
-        # Handle response errors
-        if isinstance(response, dict) and response.get("error"):
-            raise Exception(response.get("error"))
-
-        if not response:
-            raise Exception("Failed to upload PDF to Supabase")
+        if not response.path or not response.fullPath:
+            raise HTTPException(
+                status_code=400, detail="Failed to upload PDF to Supabase"
+            )
 
         return {
             "success": True,
             "message": "PDF generated successfully",
-            "filename": payload.filename,
+            "data": {
+                "fileName": payload.fileName,
+                "fileUrl": get_file_url(payload.fileName),
+                "fileSize": os.path.getsize(temp_path),
+            },
         }
 
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error: {str(e)}") from e
 
     finally:
-        # Clean up temp file
         if temp_path and os.path.exists(temp_path):
             os.unlink(temp_path)
 
@@ -104,7 +116,7 @@ class TextToAudioIn(BaseModel):
     """Request body for the /text-to-audio endpoint."""
 
     contents: str = Field(..., min_length=1, max_length=500000)
-    filename: str = Field(..., min_length=1, max_length=100)
+    fileName: str = Field(..., min_length=1, max_length=100)
     language: str = Field(default="en")
 
 
@@ -127,28 +139,32 @@ def text_to_audio(payload: TextToAudioIn):
         with open(temp_path, "rb") as f:
             response = supabase.storage.from_(BUCKET_NAME).upload(
                 file=f,
-                path=payload.filename,
+                path=payload.fileName,
                 file_options={"content-type": "audio/mpeg", "upsert": "true"},
             )
 
-        # Handle response errors
-        if isinstance(response, dict) and response.get("error"):
-            raise Exception(response.get("error"))
-
-        if not response:
-            raise Exception("Failed to upload audio to Supabase")
+        if not response.path or not response.fullPath:
+            raise HTTPException(
+                status_code=400, detail="Failed to upload audio to Supabase"
+            )
 
         return {
             "success": True,
             "message": "Audio generated successfully",
-            "filename": payload.filename,
+            "data": {
+                "duration": get_duration(temp_path),
+                "fileName": payload.fileName,
+                "fileUrl": get_file_url(payload.fileName),
+                "fileSize": os.path.getsize(temp_path),
+            },
         }
 
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error: {str(e)}") from e
 
     finally:
-        # Clean up temp file
         if temp_path and os.path.exists(temp_path):
             os.unlink(temp_path)
 
@@ -156,4 +172,4 @@ def text_to_audio(payload: TextToAudioIn):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=4001)
