@@ -1,0 +1,45 @@
+[project]
+name = "tools"
+version = "0.1.0"
+description = "Tools for StudyMind AI"
+readme = "README.md"
+authors = [
+    { name = "MD Pahlovi", email = "mdpahlovi@outlook.com" }
+]
+requires-python = ">=3.15"
+dependencies = [
+    "fastapi[standard]>=0.143.2",
+    "gtts>=2.5.4",
+    "markdown-pdf>=1.13.3",
+    "mutagen>=1.48.1",
+    "supabase>=2.33.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.13.1",
+    "mypy>=1.11",
+    "pytest>=8",
+    "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.mypy]
+files = ["app", "tests"]
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["gtts.*"]
+ignore_missing_imports = true
+
+[tool.pyrefly]
+site-package-path = [".venv/Lib/site-packages"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

@@ -1,8 +1,0 @@
-fastapi==0.141.1
-gTTS==2.5.4
-markdown_pdf==1.13.2
-mutagen==1.48.1
-pydantic==2.13.4
-python-dotenv==1.2.3
-supabase==2.31.0
-uvicorn==0.52.4

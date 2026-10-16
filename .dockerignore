@@ -1,7 +1,19 @@
-__pycache__
 .git
-
-.dockerignore
 .gitignore
-Dockerfile
+.venv
 
+__pycache__
+*.py[oc]
+
+.env
+.env.*
+
+.ruff_cache
+.pytest_cache
+.mypy_cache
+
+tests
+
+Dockerfile
+.dockerignore
+README.md
