@@ -100,7 +100,7 @@ class MarkdownToPdfIn(BaseModel):
     """Request body for the /markdown-to-pdf endpoint."""
 
     contents: str = Field(..., min_length=1, max_length=500000)
-    fileName: str = Field(..., min_length=1, max_length=100)
+    filePath: str = Field(..., min_length=1, max_length=100)
 
 
 @app.post("/markdown-to-pdf")
@@ -124,7 +124,7 @@ def markdown_to_pdf(payload: MarkdownToPdfIn) -> dict[str, Any]:
                 .storage.from_(BUCKET_NAME)
                 .upload(
                     file=f,
-                    path=payload.fileName,
+                    path=payload.filePath,
                     file_options={"content-type": "application/pdf", "upsert": "true"},
                 )
             )
@@ -136,8 +136,8 @@ def markdown_to_pdf(payload: MarkdownToPdfIn) -> dict[str, Any]:
             "success": True,
             "message": "PDF generated successfully",
             "data": {
-                "fileName": payload.fileName,
-                "fileUrl": get_file_url(payload.fileName, get_file_version(temp_path)),
+                "filePath": payload.filePath,
+                "fileUrl": get_file_url(payload.filePath, get_file_version(temp_path)),
                 "fileSize": os.path.getsize(temp_path),
             },
         }
@@ -156,7 +156,7 @@ class TextToAudioIn(BaseModel):
     """Request body for the /text-to-audio endpoint."""
 
     contents: str = Field(..., min_length=1, max_length=500000)
-    fileName: str = Field(..., min_length=1, max_length=100)
+    filePath: str = Field(..., min_length=1, max_length=100)
     language: str = Field(default="en")
 
 
@@ -179,7 +179,7 @@ def text_to_audio(payload: TextToAudioIn) -> dict[str, Any]:
                 .storage.from_(BUCKET_NAME)
                 .upload(
                     file=f,
-                    path=payload.fileName,
+                    path=payload.filePath,
                     file_options={"content-type": "audio/mpeg", "upsert": "true"},
                 )
             )
@@ -191,9 +191,9 @@ def text_to_audio(payload: TextToAudioIn) -> dict[str, Any]:
             "success": True,
             "message": "Audio generated successfully",
             "data": {
-                "duration": get_duration(temp_path),
-                "fileName": payload.fileName,
-                "fileUrl": get_file_url(payload.fileName, get_file_version(temp_path)),
+                "duration": round(get_duration(temp_path)),
+                "filePath": payload.filePath,
+                "fileUrl": get_file_url(payload.filePath, get_file_version(temp_path)),
                 "fileSize": os.path.getsize(temp_path),
             },
         }

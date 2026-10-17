@@ -77,14 +77,14 @@ def test_markdown_to_pdf(fake_supabase: _FakeSupabase) -> None:
 
     response = client.post(
         "/markdown-to-pdf",
-        json={"contents": "# Heading\n\nSome **body** text.", "fileName": "notes.pdf"},
+        json={"contents": "# Heading\n\nSome **body** text.", "filePath": "notes.pdf"},
     )
 
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
     assert body["message"] == "PDF generated successfully"
-    assert body["data"]["fileName"] == "notes.pdf"
+    assert body["data"]["filePath"] == "notes.pdf"
     assert body["data"]["fileUrl"].startswith("https://example.supabase.co/")
     assert "/studymind/notes.pdf?v=" in body["data"]["fileUrl"]
     assert body["data"]["fileSize"] > 0
@@ -102,7 +102,7 @@ def test_markdown_to_pdf_upload_failure(monkeypatch: pytest.MonkeyPatch) -> None
 
     response = client.post(
         "/markdown-to-pdf",
-        json={"contents": "# Heading", "fileName": "notes.pdf"},
+        json={"contents": "# Heading", "filePath": "notes.pdf"},
     )
 
     assert response.status_code == 400
@@ -115,17 +115,17 @@ def test_text_to_audio(fake_supabase: _FakeSupabase, monkeypatch: pytest.MonkeyP
 
     response = client.post(
         "/text-to-audio",
-        json={"contents": "Hello there", "fileName": "lesson.mp3", "language": "en"},
+        json={"contents": "Hello there", "filePath": "lesson.mp3", "language": "en"},
     )
 
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
     assert body["message"] == "Audio generated successfully"
-    assert body["data"]["fileName"] == "lesson.mp3"
+    assert body["data"]["filePath"] == "lesson.mp3"
     assert "/studymind/lesson.mp3?v=" in body["data"]["fileUrl"]
     assert body["data"]["fileSize"] == len(_MP3_BYTES)
-    assert body["data"]["duration"] == pytest.approx(_MP3_DURATION)
+    assert body["data"]["duration"] == round(_MP3_DURATION)
 
     upload = fake_supabase.storage.bucket.uploads[0]
     assert upload["path"] == "lesson.mp3"
@@ -139,10 +139,10 @@ def test_text_to_audio_defaults_language(
 ) -> None:
     monkeypatch.setattr(main, "gTTS", _FakeGtts)
 
-    response = client.post("/text-to-audio", json={"contents": "Hi", "fileName": "a.mp3"})
+    response = client.post("/text-to-audio", json={"contents": "Hi", "filePath": "a.mp3"})
 
     assert response.status_code == 200
-    assert response.json()["data"]["duration"] == pytest.approx(_MP3_DURATION)
+    assert response.json()["data"]["duration"] == round(_MP3_DURATION)
 
 
 def test_missing_supabase_config(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -150,7 +150,7 @@ def test_missing_supabase_config(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("SUPABASE_URL", raising=False)
     monkeypatch.delenv("SUPABASE_KEY", raising=False)
 
-    response = client.post("/markdown-to-pdf", json={"contents": "x", "fileName": "a.pdf"})
+    response = client.post("/markdown-to-pdf", json={"contents": "x", "filePath": "a.pdf"})
 
     assert response.status_code == 500
     assert "SUPABASE_URL" in response.json()["detail"]
@@ -159,9 +159,9 @@ def test_missing_supabase_config(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.mark.parametrize(
     ("path", "payload"),
     [
-        ("/markdown-to-pdf", {"contents": "", "fileName": "a.pdf"}),
-        ("/markdown-to-pdf", {"fileName": "a.pdf"}),
-        ("/text-to-audio", {"contents": "hi", "fileName": ""}),
+        ("/markdown-to-pdf", {"contents": "", "filePath": "a.pdf"}),
+        ("/markdown-to-pdf", {"filePath": "a.pdf"}),
+        ("/text-to-audio", {"contents": "hi", "filePath": ""}),
     ],
 )
 def test_request_validation(path: str, payload: dict[str, str]) -> None:
@@ -184,7 +184,7 @@ def test_markdown_to_pdf_heading_shapes(
 ) -> None:
     """Regression: PyMuPDF rejects a TOC whose first entry is not level 1."""
     response = client.post(
-        "/markdown-to-pdf", json={"contents": markdown, "fileName": "shapes.pdf"}
+        "/markdown-to-pdf", json={"contents": markdown, "filePath": "shapes.pdf"}
     )
 
     assert response.status_code == 200, f"{note}: {response.text}"
@@ -196,7 +196,7 @@ def test_file_url_version_tracks_content(fake_supabase: _FakeSupabase) -> None:
 
     def url_for(contents: str) -> str:
         response = client.post(
-            "/markdown-to-pdf", json={"contents": contents, "fileName": "same.pdf"}
+            "/markdown-to-pdf", json={"contents": contents, "filePath": "same.pdf"}
         )
         assert response.status_code == 200
         return str(response.json()["data"]["fileUrl"])
