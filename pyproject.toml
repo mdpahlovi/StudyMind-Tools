@@ -6,14 +6,28 @@ readme = "README.md"
 authors = [
     { name = "MD Pahlovi", email = "mdpahlovi@outlook.com" }
 ]
-requires-python = ">=3.15"
+requires-python = ">=3.11"
 dependencies = [
+    "docling[asr]>=2.31,<3",
     "fastapi[standard]>=0.143.2",
     "gtts>=2.5.4",
     "markdown-pdf>=1.13.3",
     "mutagen>=1.48.1",
+    "pika>=1.4.4",
+    "python-dotenv>=1.2.3",
     "supabase>=2.33.0",
+    "torch>=2.14,<3",
+    "torchvision>=0.29,<0.30",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
 
 [dependency-groups]
 dev = [

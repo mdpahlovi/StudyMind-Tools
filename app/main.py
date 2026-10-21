@@ -6,8 +6,10 @@ Endpoints:
 """
 
 import hashlib
+import logging
 import os
 import tempfile
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, cast
 
@@ -21,12 +23,31 @@ from mutagen.mp3 import MP3, MPEGInfo
 from pydantic import BaseModel, Field
 from supabase import Client, create_client
 
+from app.rabbitmq_consumer import RabbitMQConsumerThread
+
 load_dotenv()
 
+LOGGER = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 BUCKET_NAME = os.environ.get("BUCKET_NAME", "studymind")
 
-app = FastAPI(title="Tools for StudyMind AI")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    consumer: RabbitMQConsumerThread | None = None
+    if os.getenv("RABBITMQ_URL"):
+        consumer = RabbitMQConsumerThread()
+        consumer.start()
+        LOGGER.info("Library RabbitMQ consumer started")
+    try:
+        yield
+    finally:
+        if consumer is not None:
+            consumer.stop()
+            LOGGER.info("Library RabbitMQ consumer stopped")
+
+
+app = FastAPI(title="Tools for StudyMind AI", lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
