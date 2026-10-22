@@ -9,6 +9,7 @@ import hashlib
 import logging
 import os
 import tempfile
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, cast
@@ -33,7 +34,7 @@ BUCKET_NAME = os.environ.get("BUCKET_NAME", "studymind")
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     consumer: RabbitMQConsumerThread | None = None
     if os.getenv("RABBITMQ_URL"):
         consumer = RabbitMQConsumerThread()

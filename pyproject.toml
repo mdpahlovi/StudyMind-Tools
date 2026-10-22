@@ -6,18 +6,18 @@ readme = "README.md"
 authors = [
     { name = "MD Pahlovi", email = "mdpahlovi@outlook.com" }
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
-    "docling[asr]>=2.31,<3",
-    "fastapi[standard]>=0.143.2",
+    "docling[asr]>=2.141.0",
+    "fastapi[standard]>=0.159.1",
     "gtts>=2.5.4",
     "markdown-pdf>=1.13.3",
     "mutagen>=1.48.1",
     "pika>=1.4.4",
-    "python-dotenv>=1.2.3",
+    "python-dotenv>=1.2.4",
     "supabase>=2.33.0",
-    "torch>=2.14,<3",
-    "torchvision>=0.29,<0.30",
+    "torch>=2.14.1",
+    "torchvision>=0.29.1",
 ]
 
 [[tool.uv.index]]
@@ -31,10 +31,10 @@ torchvision = { index = "pytorch-cpu" }
 
 [dependency-groups]
 dev = [
-    "httpx2>=2.13.1",
-    "mypy>=1.11",
-    "pytest>=8",
-    "ruff>=0.6",
+    "httpx2>=2.16.0",
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "ruff>=0.17.1",
 ]
 
 [tool.pytest.ini_options]
@@ -47,6 +47,10 @@ strict = true
 
 [[tool.mypy.overrides]]
 module = ["gtts.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["pika.*"]
 ignore_missing_imports = true
 
 [tool.pyrefly]

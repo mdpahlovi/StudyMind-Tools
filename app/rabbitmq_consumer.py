@@ -58,6 +58,8 @@ PROCESSING_QUEUE = "library.processing"
 PROCESSED_QUEUE = "library.processed"
 
 DEFAULT_DOWNLOAD_TIMEOUT = 120  # seconds
+DOWNLOAD_CHUNK_BYTES = 1024 * 1024
+_SAFE_SUFFIX = re.compile(r"\.[A-Za-z0-9]{1,10}")
 
 
 def rabbitmq_url() -> str | None:
@@ -87,16 +89,34 @@ def parse_message(body: bytes) -> dict[str, Any]:
 
 
 def download_resource_file(file_url: str, item_uid: str) -> Path:
+    """Streams the file to a unique temp path, refusing anything over the size limit."""
+    load_environment()
     timeout = float(os.getenv("DOCLING_DOWNLOAD_TIMEOUT", DEFAULT_DOWNLOAD_TIMEOUT))
-    suffix = Path(urlparse(file_url).path).suffix or ""
-    target = Path(tempfile.gettempdir()) / f"studymind-tool-{item_uid}{suffix}"
+    max_bytes = converter.max_file_size_bytes()
+    raw_suffix = Path(urlparse(file_url).path).suffix
+    suffix = raw_suffix if _SAFE_SUFFIX.fullmatch(raw_suffix) else ""
+    safe_uid = re.sub(r"[^A-Za-z0-9_-]", "_", item_uid)
+    fd, raw_target = tempfile.mkstemp(prefix=f"studymind-{safe_uid}-", suffix=suffix)
+    target = Path(raw_target)
     LOGGER.info("Downloading file for %s from %s", item_uid, file_url)
     request = urllib.request.Request(file_url, headers={"User-Agent": "Mozilla/5.0"})
-    with (
-        urllib.request.urlopen(request, timeout=timeout) as response,
-        target.open("wb") as output,
-    ):
-        output.write(response.read())
+    try:
+        with (
+            os.fdopen(fd, "wb") as output,
+            urllib.request.urlopen(request, timeout=timeout) as response,
+        ):
+            declared = response.headers.get("Content-Length")
+            if declared is not None and declared.isdigit() and int(declared) > max_bytes:
+                raise ValueError(f"file is {declared} bytes; limit is {max_bytes}")
+            written = 0
+            while chunk := response.read(DOWNLOAD_CHUNK_BYTES):
+                written += len(chunk)
+                if written > max_bytes:
+                    raise ValueError(f"file exceeds the {max_bytes} byte limit")
+                output.write(chunk)
+    except BaseException:
+        target.unlink(missing_ok=True)
+        raise
     return target
 
 
@@ -121,7 +141,11 @@ def build_result_payload(
     }
 
 
-def publish_result(payload: dict[str, Any], url: str | None = None, queue: str | None = None) -> None:
+def publish_result(
+    payload: dict[str, Any],
+    url: str | None = None,
+    queue: str | None = None,
+) -> None:
     resolved_url = url or rabbitmq_url()
     resolved_queue = queue or processed_queue()
     if not resolved_url:

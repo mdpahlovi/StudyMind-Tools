@@ -117,7 +117,8 @@ def absolute_url(item_uid: str, path: str) -> str:
         return path
     client = get_client()
     object_name = f"{item_uid}/{path}"
-    return client.storage.from_(cfg["bucket"]).get_public_url(object_name)
+    public_url: str = client.storage.from_(cfg["bucket"]).get_public_url(object_name)
+    return public_url
 
 
 def reset_client() -> None:
